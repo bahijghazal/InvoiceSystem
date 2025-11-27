@@ -1,0 +1,40 @@
+﻿@model InvoiceSystem.Models.InvoiceHeader
+@{
+    ViewData["Title"] = "Invoice Details";
+}
+
+<h2>Invoice Details</h2>
+
+<p>
+    <strong>Invoice ID:</strong> @Model.InvoiceHeaderId<br/>
+    <strong>Customer:</strong> @Model.Customer.Name<br/>
+    <strong>Order Date:</strong> @Model.OrderDate.ToString("yyyy-MM-dd")<br/>
+    <strong>Total Fee:</strong> @Model.TotalFee.ToString("C")<br/>
+</p>
+
+<h4>Invoice Lines</h4>
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Item</th>
+            <th>Quantity</th>
+            <th>Unit Price</th>
+            <th>Total</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach(var line in Model.InvoiceDetails)
+        {
+            <tr>
+                <td>@line.Item.Name</td>
+                <td>@line.Quantity</td>
+                <td>@line.UnitPrice.ToString("C")</td>
+                <td>@(line.Quantity * line.UnitPrice)</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<p>
+    <a asp-action="Index" class="btn btn-secondary">Back to List</a>
+</p>

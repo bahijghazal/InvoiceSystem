@@ -1,0 +1,221 @@
+﻿@model InvoiceSystem.ViewModels.InvoiceCreateVM
+@{
+    ViewData["Title"] = "Create Invoice";
+    var customers = ViewBag.Customers as List<InvoiceSystem.Models.Customer>;
+}
+
+<style>
+.container { max-width: 1000px; margin: 0 auto; padding: 20px; }
+h1 { margin-bottom: 30px; }
+
+.form-group { margin-bottom: 15px; display:flex; flex-direction:column; }
+.form-group label { margin-bottom:5px; font-weight:500; }
+
+select, input[type="date"] { padding:8px; font-size:14px; }
+
+table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+table th, table td { padding: 8px; border: 1px solid #ddd; text-align: left; }
+table th { background: #f5f5f5; font-weight: 600; }
+input.grid-input { width: 100%; border: none; padding: 4px; box-sizing: border-box; }
+input.grid-input:focus { outline: 1px solid #999; }
+
+.total-display { font-size: 18px; margin-top: 10px; }
+
+#autocompleteList { position: absolute; list-style: none; padding: 4px; margin: 0; border: 1px solid #ddd; display: none; max-height: 200px; overflow: auto; box-shadow: 0 2px 8px rgba(0,0,0,0.1); z-index: 1000; background: #fff;}
+#autocompleteList li { padding: 6px; cursor: pointer; }
+#autocompleteList li:hover { background: #f0f0f0; }
+</style>
+
+<div class="container">
+    <h1>Create Invoice</h1>
+
+    <form id="invoiceForm" asp-action="Create" method="post">
+        <div class="form-group">
+            <label>Customer</label>
+            <select name="CustomerId" required>
+                <option value="">-- choose --</option>
+                @foreach(var c in customers)
+                {
+                    <option value="@c.CustomerId">@c.Name (@c.EmailAddress)</option>
+                }
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Order Date</label>
+            <input type="date" name="OrderDate" required value="@DateTime.Today.ToString("yyyy-MM-dd")" />
+        </div>
+
+        <h3>Invoice Lines</h3>
+        <table id="linesTable">
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Unit Price</th>
+                    <th>Qty</th>
+                    <th>Line Total</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="linesBody">
+            </tbody>
+        </table>
+
+        <div class="total-display">
+            <strong>Total:</strong> <span id="invoiceTotal">0.00</span>
+        </div>
+
+        <input type="hidden" id="LinesJson" name="LinesJson" />
+        <div class="form-group">
+            <button type="submit">Save Invoice</button>
+        </div>
+    </form>
+</div>
+
+<ul id="autocompleteList"></ul>
+
+@section Scripts {
+<script>
+let lines = [];
+const linesBody = document.getElementById('linesBody');
+const invoiceTotalSpan = document.getElementById('invoiceTotal');
+const linesJsonInput = document.getElementById('LinesJson');
+const autocompleteList = document.getElementById('autocompleteList');
+
+addEmptyRow();
+
+function addEmptyRow() {
+    const idx = lines.length;
+    lines.push({ ItemId: 0, ItemName: '', UnitPrice: '', Quantity: '' });
+    renderLines();
+    focusCell(idx, 'ItemName');
+}
+
+function renderLines() {
+    linesBody.innerHTML = '';
+    let total = 0;
+
+    lines.forEach((line, idx) => {
+        const lineTotal = (parseFloat(line.UnitPrice) || 0) * (parseInt(line.Quantity) || 0);
+        total += lineTotal;
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><input class="grid-input" type="text" data-idx="${idx}" data-field="ItemName" value="${line.ItemName}" autocomplete="off" /></td>
+            <td><input class="grid-input" type="number" step="0.01" data-idx="${idx}" data-field="UnitPrice" value="${line.UnitPrice}" /></td>
+            <td><input class="grid-input" type="number" step="1" min="1" data-idx="${idx}" data-field="Quantity" value="${line.Quantity}" /></td>
+            <td class="line-total">${lineTotal.toFixed(2)}</td>
+            <td><button type="button" data-idx="${idx}" class="delLine">Delete</button></td>
+        `;
+        linesBody.appendChild(tr);
+    });
+
+    invoiceTotalSpan.textContent = total.toFixed(2);
+}
+
+function updateTotals() {
+    let total = 0;
+    lines.forEach((line, idx) => {
+        const lineTotal = (parseFloat(line.UnitPrice) || 0) * (parseInt(line.Quantity) || 0);
+        total += lineTotal;
+        const row = linesBody.children[idx];
+        if(row) row.querySelector('.line-total').textContent = lineTotal.toFixed(2);
+    });
+    invoiceTotalSpan.textContent = total.toFixed(2);
+}
+
+linesBody.addEventListener('input', (e) => {
+    const input = e.target;
+    const idx = parseInt(input.dataset.idx);
+    const field = input.dataset.field;
+
+    if(field === 'ItemName'){
+        lines[idx].ItemName = input.value;
+        lines[idx].ItemId = 0;
+        showAutocomplete(input, idx);
+    } else if(field === 'UnitPrice'){
+        lines[idx].UnitPrice = parseFloat(input.value) || 0;
+    } else if(field === 'Quantity'){
+        lines[idx].Quantity = parseInt(input.value) || 1;
+    }
+    updateTotals();
+});
+
+linesBody.addEventListener('click', (e) => {
+    if(e.target.classList.contains('delLine')){
+        const idx = parseInt(e.target.dataset.idx);
+        lines.splice(idx, 1);
+        renderLines();
+        if(lines.length === 0) addEmptyRow();
+    }
+});
+
+linesBody.addEventListener('keydown', (e) => {
+    const input = e.target;
+    const idx = parseInt(input.dataset.idx);
+    const field = input.dataset.field;
+    const fields = ['ItemName','UnitPrice','Quantity'];
+    if(e.key === 'Enter' || e.key === 'Tab'){
+        e.preventDefault();
+        let nextIdx = idx;
+        let nextField = fields[(fields.indexOf(field)+1)%fields.length];
+        if(field === 'Quantity') nextIdx = idx + 1;
+        if(nextIdx >= lines.length) addEmptyRow();
+        focusCell(nextIdx, nextField);
+    }
+});
+
+function focusCell(idx, field){
+    const input = document.querySelector(`input[data-idx="${idx}"][data-field="${field}"]`);
+    if(input) input.focus();
+}
+
+document.getElementById('invoiceForm').addEventListener('submit', (e) => {
+    const validLines = lines.filter(l => l.ItemId && l.Quantity > 0);
+    if(validLines.length === 0){
+        e.preventDefault();
+        alert('Invoice must have at least one valid line.');
+        return;
+    }
+    linesJsonInput.value = JSON.stringify(validLines);
+});
+
+let debounceTimer = null;
+function showAutocomplete(input, idx){
+    const q = input.value.trim();
+    if(debounceTimer) clearTimeout(debounceTimer);
+    if(!q){ autocompleteList.style.display = 'none'; return; }
+
+    debounceTimer = setTimeout(() => {
+        fetch('/api/Items/lookup?q=' + encodeURIComponent(q))
+            .then(r => r.json())
+            .then(data => {
+                autocompleteList.innerHTML = '';
+                data.forEach(i => {
+                    const li = document.createElement('li');
+                    li.textContent = `${i.name} — ${i.price.toFixed(2)}`;
+                    li.addEventListener('click', () => {
+                        lines[idx].ItemId = i.id;
+                        lines[idx].ItemName = i.name;
+                        lines[idx].UnitPrice = parseFloat(i.price);
+                        if(!lines[idx].Quantity) lines[idx].Quantity = 1; 
+                        renderLines();
+                        focusCell(idx, 'Quantity');
+                        autocompleteList.style.display = 'none';
+                    });
+                    autocompleteList.appendChild(li);
+                });
+                const rect = input.getBoundingClientRect();
+                autocompleteList.style.left = rect.left + 'px';
+                autocompleteList.style.top = (rect.bottom + window.scrollY) + 'px';
+                autocompleteList.style.width = rect.width + 'px';
+                autocompleteList.style.display = 'block';
+            });
+    }, 200);
+}
+
+document.addEventListener('click', (e)=>{
+    if(!autocompleteList.contains(e.target)) autocompleteList.style.display = 'none';
+});
+</script>
+}

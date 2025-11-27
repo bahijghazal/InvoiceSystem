@@ -1,0 +1,236 @@
+﻿@model InvoiceSystem.ViewModels.InvoiceEditVM
+@using System.Text.Json
+@{
+    ViewData["Title"] = "Edit Invoice";
+
+    var customers = ViewBag.Customers as List<InvoiceSystem.Models.Customer>;
+    var items = ViewBag.Items as List<InvoiceSystem.Models.Item>;
+    var currentCustomer = customers.FirstOrDefault(c => c.CustomerId == Model.CustomerId);
+}
+
+<style>
+.container { max-width: 1000px; margin: 0 auto; padding: 20px; }
+h2 { margin-bottom: 30px; }
+.form-group { margin-bottom: 15px; display:flex; flex-direction:column; }
+input.grid-input { width: 100%; border: none; padding: 4px; box-sizing: border-box; }
+input.grid-input:focus { outline: 1px solid #999; }
+table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+table th, table td { padding: 8px; border: 1px solid #ddd; text-align: left; }
+table th { background: #f5f5f5; font-weight: 600; }
+.total-display { font-size: 18px; margin-top: 10px; }
+#autocompleteList { position: absolute; list-style: none; padding: 4px; margin: 0; border: 1px solid #ddd; display: none; max-height: 200px; overflow: auto; box-shadow: 0 2px 8px rgba(0,0,0,0.1); z-index: 1000; background: #fff; }
+#autocompleteList li { padding: 6px; cursor: pointer; }
+#autocompleteList li:hover { background: #f0f0f0; }
+</style>
+
+<div class="container">
+    <h2>Edit Invoice</h2>
+
+    <form id="invoiceForm" asp-action="Edit" method="post">
+        <input type="hidden" asp-for="InvoiceHeaderId" />
+
+        <div class="form-group">
+            <label>Customer</label>
+            <input type="text" value="@currentCustomer?.Name (@currentCustomer?.EmailAddress)" disabled />
+            <input type="hidden" asp-for="CustomerId" />
+        </div>
+
+        <div class="form-group">
+            <label>Order Date</label>
+            <input type="date" asp-for="OrderDate" required value="@Model.OrderDate.ToString("yyyy-MM-dd")" />
+        </div>
+
+        <hr />
+
+        <h4>Invoice Lines</h4>
+        <table id="linesTable">
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Unit Price</th>
+                    <th>Quantity</th>
+                    <th>Line Total</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="linesBody"></tbody>
+        </table>
+
+        <div class="total-display">
+            <strong>Total:</strong> <span id="invoiceTotal">0.00</span>
+        </div>
+
+        <input type="hidden" name="LinesJson" id="LinesJson" />
+        <div class="form-group">
+            <button type="submit">Save Invoice</button>
+        </div>
+    </form>
+</div>
+
+<ul id="autocompleteList"></ul>
+
+@section Scripts {
+<script>
+const availableItems = @Html.Raw(JsonSerializer.Serialize(items.Select(i => new { Id = i.ItemId, Name = i.Name, Price = i.Price })));
+const itemsMap = {};
+availableItems.forEach(item => itemsMap[item.Id] = item);
+
+let lines = @Html.Raw(JsonSerializer.Serialize(
+    !string.IsNullOrEmpty(Model.LinesJson)
+        ? JsonSerializer.Deserialize<List<InvoiceSystem.ViewModels.InvoiceLineVM>>(Model.LinesJson)
+        : new List<InvoiceSystem.ViewModels.InvoiceLineVM>()
+));
+
+lines = lines.map(l => {
+    const item = itemsMap[l.ItemId];
+    return { ItemId: l.ItemId, ItemName: item ? item.Name : 'Unknown', UnitPrice: l.UnitPrice, Quantity: l.Quantity };
+});
+
+const linesBody = document.getElementById('linesBody');
+const invoiceTotalSpan = document.getElementById('invoiceTotal');
+const linesJsonInput = document.getElementById('LinesJson');
+const autocompleteList = document.getElementById('autocompleteList');
+
+function addEmptyRow(idx) {
+    lines.splice(idx !== undefined ? idx : lines.length, 0, { ItemId: 0, ItemName: '', UnitPrice: '', Quantity: 1 });
+    renderLines();
+    focusCell(idx !== undefined ? idx : lines.length - 1, 'ItemName');
+}
+
+function renderLines() {
+    linesBody.innerHTML = '';
+    let total = 0;
+
+    lines.forEach((line, idx) => {
+        const lineTotal = (parseFloat(line.UnitPrice) || 0) * (parseInt(line.Quantity) || 0);
+        total += lineTotal;
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><input class="grid-input" type="text" data-idx="${idx}" data-field="ItemName" value="${line.ItemName}" autocomplete="off" /></td>
+            <td><input class="grid-input" type="number" step="0.01" data-idx="${idx}" data-field="UnitPrice" value="${line.UnitPrice}" /></td>
+            <td><input class="grid-input" type="number" min="1" data-idx="${idx}" data-field="Quantity" value="${line.Quantity}" /></td>
+            <td class="line-total">${lineTotal.toFixed(2)}</td>
+            <td><button type="button" data-idx="${idx}" class="delLine">Delete</button></td>
+        `;
+        linesBody.appendChild(tr);
+    });
+
+    invoiceTotalSpan.textContent = total.toFixed(2);
+    linesJsonInput.value = JSON.stringify(lines);
+}
+
+function focusCell(idx, field) {
+    const input = document.querySelector(`input[data-idx="${idx}"][data-field="${field}"]`);
+    if(input) input.focus();
+}
+
+linesBody.addEventListener('input', (e) => {
+    const input = e.target;
+    const idx = parseInt(input.dataset.idx);
+    const field = input.dataset.field;
+
+    if(field === 'ItemName'){
+        lines[idx].ItemName = input.value;
+        lines[idx].ItemId = 0;
+        showAutocomplete(input, idx);
+    } else if(field === 'UnitPrice'){
+        lines[idx].UnitPrice = parseFloat(input.value) || 0;
+    } else if(field === 'Quantity'){
+        lines[idx].Quantity = parseInt(input.value) || 1;
+    }
+    updateTotals();
+});
+
+linesBody.addEventListener('keydown', (e) => {
+    const input = e.target;
+    const idx = parseInt(input.dataset.idx);
+    const field = input.dataset.field;
+    const fields = ['ItemName','UnitPrice','Quantity'];
+
+    if(e.key === 'Enter') {
+        e.preventDefault();
+        let nextIdx = idx;
+        let nextField = fields[(fields.indexOf(field)+1)%fields.length];
+
+        if(field === 'Quantity'){
+            nextIdx = idx + 1;
+            if(nextIdx >= lines.length) addEmptyRow(nextIdx);
+            nextField = 'ItemName';
+        }
+
+        focusCell(nextIdx, nextField);
+    }
+});
+
+linesBody.addEventListener('click', (e) => {
+    if(e.target.classList.contains('delLine')){
+        const idx = parseInt(e.target.dataset.idx);
+        lines.splice(idx, 1);
+        renderLines();
+        if(lines.length === 0) addEmptyRow();
+    }
+});
+
+function updateTotals() {
+    let total = 0;
+    lines.forEach((line, idx) => {
+        const lineTotal = (parseFloat(line.UnitPrice) || 0) * (parseInt(line.Quantity) || 0);
+        total += lineTotal;
+        const row = linesBody.children[idx];
+        if(row) row.querySelector('.line-total').textContent = lineTotal.toFixed(2);
+    });
+    invoiceTotalSpan.textContent = total.toFixed(2);
+    linesJsonInput.value = JSON.stringify(lines);
+}
+
+let debounceTimer = null;
+function showAutocomplete(input, idx){
+    const q = input.value.trim();
+    if(debounceTimer) clearTimeout(debounceTimer);
+    if(!q){ autocompleteList.style.display = 'none'; return; }
+
+    debounceTimer = setTimeout(() => {
+        fetch('/api/Items/lookup?q=' + encodeURIComponent(q))
+            .then(r => r.json())
+            .then(data => {
+                autocompleteList.innerHTML = '';
+                data.forEach(i => {
+                    const li = document.createElement('li');
+                    li.textContent = `${i.name} — ${i.price.toFixed(2)}`;
+                    li.addEventListener('click', () => {
+                    lines[idx].ItemId = i.id;
+                    lines[idx].ItemName = i.name;
+                    lines[idx].UnitPrice = parseFloat(i.price);
+
+                    const nameInput = document.querySelector(`input[data-idx="${idx}"][data-field="ItemName"]`);
+                    const priceInput = document.querySelector(`input[data-idx="${idx}"][data-field="UnitPrice"]`);
+                    if(nameInput) nameInput.value = lines[idx].ItemName;
+                    if(priceInput) priceInput.value = lines[idx].UnitPrice;
+
+                    updateTotals();
+                    focusCell(idx, 'Quantity');
+                    autocompleteList.style.display = 'none';
+                });
+
+
+                    autocompleteList.appendChild(li);
+                });
+
+                const rect = input.getBoundingClientRect();
+                autocompleteList.style.left = rect.left + 'px';
+                autocompleteList.style.top = (rect.bottom + window.scrollY) + 'px';
+                autocompleteList.style.width = rect.width + 'px';
+                autocompleteList.style.display = 'block';
+            });
+    }, 200);
+}
+
+document.addEventListener('click', (e)=> {
+    if(!autocompleteList.contains(e.target)) autocompleteList.style.display = 'none';
+});
+
+if(lines.length === 0) addEmptyRow();
+else renderLines();
+</script>
+}

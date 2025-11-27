@@ -1,0 +1,40 @@
+﻿@model IEnumerable<InvoiceSystem.Models.InvoiceHeader>
+@{
+    ViewData["Title"] = "Invoices";
+}
+
+<h2>Invoices</h2>
+
+<p>
+    <a class="btn btn-primary" asp-action="Create">Create New Invoice</a>
+</p>
+
+<table class="table table-bordered table-striped">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Customer</th>
+            <th>Order Date</th>
+            <th>Total Fee</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach(var inv in Model)
+        {
+            <tr>
+                <td>@inv.InvoiceHeaderId</td>
+                <td>@inv.Customer.Name</td>
+                <td>@inv.OrderDate.ToString("yyyy-MM-dd")</td>
+                <td>@inv.TotalFee.ToString("C")</td>
+                <td>
+                    <a class="btn btn-info btn-sm" asp-action="Details" asp-route-id="@inv.InvoiceHeaderId">Details</a>
+                    <a class="btn btn-warning btn-sm" asp-action="Edit" asp-route-id="@inv.InvoiceHeaderId">Edit</a>
+                    <form asp-action="Delete" asp-route-id="@inv.InvoiceHeaderId" method="post" style="display:inline">
+                        <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete this invoice?');">Delete</button>
+                    </form>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
