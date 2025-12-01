@@ -40,6 +40,10 @@ public class ApplicationDbContext : IdentityDbContext
             .Property(x => x.TotalFee)
             .HasPrecision(18, 2);
 
-
+        // Make Customer.EmailAddress unique
+        modelBuilder.Entity<Customer>()
+            .HasIndex(c => c.EmailAddress)
+            .IsUnique();
     }
+
 }
