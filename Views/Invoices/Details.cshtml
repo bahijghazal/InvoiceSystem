@@ -1,6 +1,8 @@
 ﻿@model InvoiceSystem.Models.InvoiceHeader
 @{
     ViewData["Title"] = "Invoice Details";
+    var isPrevDisabled = ViewBag.PrevId == Model.InvoiceHeaderId;
+    var isNextDisabled = ViewBag.NextId == Model.InvoiceHeaderId;
 }
 
 <h2>Invoice Details</h2>
@@ -13,28 +15,52 @@
 </p>
 
 <h4>Invoice Lines</h4>
-<table class="table table-bordered">
-    <thead>
-        <tr>
-            <th>Item</th>
-            <th>Quantity</th>
-            <th>Unit Price</th>
-            <th>Total</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach(var line in Model.InvoiceDetails)
-        {
-            <tr>
-                <td>@line.Item.Name</td>
-                <td>@line.Quantity</td>
-                <td>@line.UnitPrice.ToString("C")</td>
-                <td>@(line.Quantity * line.UnitPrice)</td>
-            </tr>
-        }
-    </tbody>
-</table>
 
-<p>
+<div class="d-flex align-items-center">
+    <!-- Previous Button -->
+    <div class="me-2">
+        <a class="btn btn-primary @(isPrevDisabled ? "disabled" : "")" 
+           asp-action="Details" asp-route-id="@ViewBag.PrevId">
+            &larr;
+        </a>
+    </div>
+
+    <!-- Table -->
+    <div class="flex-grow-1">
+        <table class="table table-bordered mb-0">
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Description</th>
+                    <th>Quantity</th>
+                    <th>Unit Price</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach(var line in Model.InvoiceDetails)
+                {
+                    <tr>
+                        <td>@line.Item.Name</td>
+                        <td>@line.Item.Description</td>
+                        <td>@line.Quantity</td>
+                        <td>@line.UnitPrice.ToString("C")</td>
+                        <td>$@(line.Quantity * line.UnitPrice)</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Next Button -->
+    <div class="ms-2">
+        <a class="btn btn-primary @(isNextDisabled ? "disabled" : "")" 
+           asp-action="Details" asp-route-id="@ViewBag.NextId">
+            &rarr;
+        </a>
+    </div>
+</div>
+
+<div class="mt-3">
     <a asp-action="Index" class="btn btn-secondary">Back to List</a>
-</p>
+</div>

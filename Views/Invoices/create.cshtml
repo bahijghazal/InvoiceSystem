@@ -51,6 +51,7 @@ input.grid-input:focus { outline: 1px solid #999; }
             <thead>
                 <tr>
                     <th>Item</th>
+                    <th>Description</th>
                     <th>Unit Price</th>
                     <th>Qty</th>
                     <th>Line Total</th>
@@ -86,7 +87,7 @@ addEmptyRow();
 
 function addEmptyRow() {
     const idx = lines.length;
-    lines.push({ ItemId: 0, ItemName: '', UnitPrice: '', Quantity: '' });
+    lines.push({ ItemId: 0, ItemName: '', Description: '', UnitPrice: '', Quantity: '' });
     renderLines();
     focusCell(idx, 'ItemName');
 }
@@ -102,6 +103,7 @@ function renderLines() {
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td><input class="grid-input" type="text" data-idx="${idx}" data-field="ItemName" value="${line.ItemName}" autocomplete="off" /></td>
+            <td><input class="grid-input" type="text" data-idx="${idx}" data-field="Description" value="${line.Description}" /></td>
             <td><input class="grid-input" type="number" step="0.01" data-idx="${idx}" data-field="UnitPrice" value="${line.UnitPrice}" /></td>
             <td><input class="grid-input" type="number" step="1" min="1" data-idx="${idx}" data-field="Quantity" value="${line.Quantity}" /></td>
             <td class="line-total">${lineTotal.toFixed(2)}</td>
@@ -133,6 +135,8 @@ linesBody.addEventListener('input', (e) => {
         lines[idx].ItemName = input.value;
         lines[idx].ItemId = 0;
         showAutocomplete(input, idx);
+    } else if(field === 'Description'){
+        lines[idx].Description = input.value;
     } else if(field === 'UnitPrice'){
         lines[idx].UnitPrice = parseFloat(input.value) || 0;
     } else if(field === 'Quantity'){
@@ -154,7 +158,7 @@ linesBody.addEventListener('keydown', (e) => {
     const input = e.target;
     const idx = parseInt(input.dataset.idx);
     const field = input.dataset.field;
-    const fields = ['ItemName','UnitPrice','Quantity'];
+    const fields = ['ItemName','Description','UnitPrice','Quantity'];
     if(e.key === 'Enter' || e.key === 'Tab'){
         e.preventDefault();
         let nextIdx = idx;
@@ -197,6 +201,7 @@ function showAutocomplete(input, idx){
                     li.addEventListener('click', () => {
                         lines[idx].ItemId = i.id;
                         lines[idx].ItemName = i.name;
+                        lines[idx].Description = i.description || '';
                         lines[idx].UnitPrice = parseFloat(i.price);
                         if(!lines[idx].Quantity) lines[idx].Quantity = 1; 
                         renderLines();

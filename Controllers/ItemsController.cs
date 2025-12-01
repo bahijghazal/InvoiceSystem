@@ -21,7 +21,7 @@ namespace InvoiceSystem.Controllers
             var items = await _db.Items
                 .Where(i => EF.Functions.Like(i.Name, $"%{q}%"))
                 .OrderBy(i => i.Name)
-                .Select(i => new { id = i.ItemId, name = i.Name, price = i.Price })
+                .Select(i => new { id = i.ItemId, name = i.Name, description = i.Description, price = i.Price })
                 .Take(10)
                 .ToListAsync();
 

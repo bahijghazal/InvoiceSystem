@@ -168,6 +168,24 @@ namespace InvoiceSystem.Controllers
                 .FirstOrDefaultAsync(h => h.InvoiceHeaderId == id);
 
             if (invoice == null) return NotFound();
+
+            // Find previous invoice
+            var prevId = await _db.InvoiceHeaders
+                .Where(h => h.InvoiceHeaderId < id)
+                .OrderByDescending(h => h.InvoiceHeaderId)
+                .Select(h => h.InvoiceHeaderId)
+                .FirstOrDefaultAsync();
+
+            // Find next invoice
+            var nextId = await _db.InvoiceHeaders
+                .Where(h => h.InvoiceHeaderId > id)
+                .OrderBy(h => h.InvoiceHeaderId)
+                .Select(h => h.InvoiceHeaderId)
+                .FirstOrDefaultAsync();
+
+            ViewBag.PrevId = prevId != 0 ? prevId : id; // stay on same if none
+            ViewBag.NextId = nextId != 0 ? nextId : id;
+
             return View(invoice);
         }
 
