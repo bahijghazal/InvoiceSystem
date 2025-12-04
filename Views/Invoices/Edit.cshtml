@@ -88,8 +88,8 @@ lines = lines.map(l => {
         ItemId: l.ItemId,
         ItemName: item ? item.Name : 'Unknown',
         Description: l.Description || (item ? item.Description : ''),
-        UnitPrice: l.UnitPrice,
-        Quantity: l.Quantity
+        UnitPrice: parseFloat(l.UnitPrice) || 0,
+        Quantity: parseInt(l.Quantity) || 1
     };
 });
 
@@ -99,7 +99,7 @@ const linesJsonInput = document.getElementById('LinesJson');
 const autocompleteList = document.getElementById('autocompleteList');
 
 function addEmptyRow(idx) {
-    lines.splice(idx !== undefined ? idx : lines.length, 0, { ItemId: 0, ItemName: '', Description: '', UnitPrice: '', Quantity: 1 });
+    lines.splice(idx !== undefined ? idx : lines.length, 0, { ItemId: 0, ItemName: '', Description: '', UnitPrice: 0, Quantity: 1 });
     renderLines();
     focusCell(idx !== undefined ? idx : lines.length - 1, 'ItemName');
 }
@@ -124,8 +124,8 @@ function renderLines() {
         linesBody.appendChild(tr);
     });
 
+    updateLinesJson();
     invoiceTotalSpan.textContent = total.toFixed(2);
-    linesJsonInput.value = JSON.stringify(lines);
 }
 
 function focusCell(idx, field) {
@@ -191,7 +191,19 @@ function updateTotals() {
         if(row) row.querySelector('.line-total').textContent = lineTotal.toFixed(2);
     });
     invoiceTotalSpan.textContent = total.toFixed(2);
-    linesJsonInput.value = JSON.stringify(lines);
+    updateLinesJson();
+}
+
+function updateLinesJson() {
+    linesJsonInput.value = JSON.stringify(
+        lines.map(l => ({
+            ItemId: l.ItemId,
+            ItemName: l.ItemName,
+            Description: l.Description,
+            UnitPrice: parseFloat(l.UnitPrice) || 0,
+            Quantity: parseInt(l.Quantity) || 1
+        }))
+    );
 }
 
 let debounceTimer = null;
@@ -212,8 +224,8 @@ function showAutocomplete(input, idx){
                         lines[idx].ItemId = i.id;
                         lines[idx].ItemName = i.name;
                         lines[idx].Description = i.description || '';
-                        lines[idx].UnitPrice = parseFloat(i.price);
-                        if(!lines[idx].Quantity) lines[idx].Quantity = 1; 
+                        lines[idx].UnitPrice = parseFloat(i.price) || 0;
+                        if(!lines[idx].Quantity) lines[idx].Quantity = 1;
 
                         renderLines();
                         focusCell(idx, 'Quantity');

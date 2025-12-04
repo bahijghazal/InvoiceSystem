@@ -134,15 +134,19 @@ namespace InvoiceSystem.Controllers
             invoice.OrderDate = vm.OrderDate;
 
             // Deserialize updated lines
-            var lines = JsonSerializer.Deserialize<List<InvoiceLineVM>>(vm.LinesJson ?? "[]") ?? new List<InvoiceLineVM>();
+            var lines = JsonSerializer.Deserialize<List<InvoiceLineVM>>(vm.LinesJson ?? "[]")
+                        ?? new List<InvoiceLineVM>();
 
             // Remove old details
             _db.InvoiceDetails.RemoveRange(invoice.InvoiceDetails);
 
-            // Add new details
+            // Add new details with validation
             decimal total = 0m;
             foreach (var l in lines)
             {
+                // Skip invalid lines
+                if (l.ItemId == 0) continue;
+
                 var detail = new InvoiceDetail
                 {
                     ItemId = l.ItemId,
@@ -156,38 +160,32 @@ namespace InvoiceSystem.Controllers
             invoice.TotalFee = total;
 
             await _db.SaveChangesAsync();
+
             return RedirectToAction("Details", new { id = invoice.InvoiceHeaderId });
+
         }
 
         // GET: Invoices/Details/5
         public async Task<IActionResult> Details(int id)
         {
             var invoice = await _db.InvoiceHeaders
-                .Include(h => h.Customer)
-                .Include(h => h.InvoiceDetails).ThenInclude(d => d.Item)
+                .Include(h => h.Customer) // include customer
+                .Include(h => h.InvoiceDetails)
+                    .ThenInclude(d => d.Item) // include item for each line
                 .FirstOrDefaultAsync(h => h.InvoiceHeaderId == id);
 
             if (invoice == null) return NotFound();
 
-            // Find previous invoice
-            var prevId = await _db.InvoiceHeaders
-                .Where(h => h.InvoiceHeaderId < id)
-                .OrderByDescending(h => h.InvoiceHeaderId)
-                .Select(h => h.InvoiceHeaderId)
-                .FirstOrDefaultAsync();
-
-            // Find next invoice
-            var nextId = await _db.InvoiceHeaders
-                .Where(h => h.InvoiceHeaderId > id)
-                .OrderBy(h => h.InvoiceHeaderId)
-                .Select(h => h.InvoiceHeaderId)
-                .FirstOrDefaultAsync();
-
-            ViewBag.PrevId = prevId != 0 ? prevId : id; // stay on same if none
-            ViewBag.NextId = nextId != 0 ? nextId : id;
+            // Optional: previous/next navigation
+            var ids = await _db.InvoiceHeaders.OrderBy(h => h.InvoiceHeaderId)
+                                             .Select(h => h.InvoiceHeaderId)
+                                             .ToListAsync();
+            ViewBag.PrevId = ids.Where(x => x < id).DefaultIfEmpty(id).Max();
+            ViewBag.NextId = ids.Where(x => x > id).DefaultIfEmpty(id).Min();
 
             return View(invoice);
         }
+
 
         // POST: Invoices/Delete/5
         [HttpPost]
