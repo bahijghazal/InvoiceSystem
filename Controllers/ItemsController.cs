@@ -11,7 +11,7 @@ namespace InvoiceSystem.Controllers
         private readonly ApplicationDbContext _db;
         public ItemsController(ApplicationDbContext db) => _db = db;
 
-        // GET api/items/lookup?q=pen
+        // GET api/items/lookup?q=something
         [HttpGet("lookup")]
         public async Task<IActionResult> Lookup(string q)
         {

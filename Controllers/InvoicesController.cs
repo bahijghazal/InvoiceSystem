@@ -63,6 +63,14 @@ namespace InvoiceSystem.Controllers
             decimal total = 0m;
             foreach (var l in lines)
             {
+                if (l.UnitPrice < 0)
+                {
+                    ModelState.AddModelError("", $"UnitPrice cannot be negative for item {l.ItemName}.");
+                    ViewBag.Customers = await _db.Customers.ToListAsync();
+                    ViewBag.Items = await _db.Items.ToListAsync();
+                    return View(vm);
+                }
+
                 Console.WriteLine($"Line: {l}");
                 var detail = new InvoiceDetail
                 {
@@ -146,6 +154,14 @@ namespace InvoiceSystem.Controllers
             {
                 // Skip invalid lines
                 if (l.ItemId == 0) continue;
+
+                if (l.UnitPrice < 0)
+                {
+                    ModelState.AddModelError("", $"UnitPrice cannot be negative for item {l.ItemName}.");
+                    ViewBag.Customers = await _db.Customers.ToListAsync();
+                    ViewBag.Items = await _db.Items.ToListAsync();
+                    return View(vm);
+                }
 
                 var detail = new InvoiceDetail
                 {

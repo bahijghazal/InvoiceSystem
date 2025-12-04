@@ -21,7 +21,7 @@ namespace InvoiceSystem.Controllers
             return View(customers); 
         }
 
-        // GET: Customers/Details/5
+        // GET: Customers/Details/id
         public async Task<IActionResult> Details(int? id)
         {
             if (id == null) return NotFound();
@@ -55,7 +55,7 @@ namespace InvoiceSystem.Controllers
             return View(customer);
         }
 
-        // GET: Customers/Edit/5
+        // GET: Customers/Edit/id
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null) return NotFound();
@@ -66,7 +66,7 @@ namespace InvoiceSystem.Controllers
             return View(customer);
         }
 
-        // POST: Customers/Edit/5
+        // POST: Customers/Edit/id
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, [Bind("CustomerId,Name,EmailAddress,PhoneNumber,City,Country")] Customer customer)
@@ -90,7 +90,7 @@ namespace InvoiceSystem.Controllers
             return View(customer);
         }
 
-        // GET: Customers/Delete/5
+        // GET: Customers/Delete/id
         public async Task<IActionResult> Delete(int? id)
         {
             if (id == null) return NotFound();
@@ -103,7 +103,7 @@ namespace InvoiceSystem.Controllers
             return View(customer);
         }
 
-        // POST: Customers/Delete/5
+        // POST: Customers/Delete/id
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)

@@ -12,7 +12,6 @@ namespace InvoiceSystem.Controllers
         private readonly ApplicationDbContext _db;
         public ItemController(ApplicationDbContext db) => _db = db;
 
-        // MVC pages
         public async Task<IActionResult> Index()
         {
             var items = await _db.Items.ToListAsync();
