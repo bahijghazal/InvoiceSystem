@@ -1,0 +1,19 @@
+﻿@model InvoiceSystem.Models.Item
+
+<h1>Item Details</h1>
+
+<div>
+    <h4>@Model.Name</h4>
+    <p>@Model.Description</p>
+    <p>Price: @Model.Price.ToString("C")</p>
+    <p>Stock: @Model.Stock</p>
+    @if (!string.IsNullOrEmpty(Model.ImageUrl))
+    {
+        <img src="@Model.ImageUrl" alt="@Model.Name" width="150" />
+    }
+</div>
+
+<p>
+    <a asp-action="Edit" asp-route-id="@Model.ItemId" class="btn btn-success">Edit</a>
+    <a asp-action="Index" class="btn btn-secondary">Back to List</a>
+</p>
